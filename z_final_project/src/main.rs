@@ -6,12 +6,14 @@ use crossterm::{event, execute, terminal, ExecutableCommand};
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::cursor::{Hide, Show};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use z_final_project::player::Player;
 use std::time::Duration;
 use std::io;
 use std::sync::mpsc;
 use z_final_project::frame;
 use z_final_project::render;
 use z_final_project::frame::new_frame;
+use z_final_project::frame::Drawable;
 
 fn main() -> Result <(), Box<dyn Error>> {
     let mut audio = Audio::new();
@@ -24,13 +26,20 @@ fn main() -> Result <(), Box<dyn Error>> {
     audio.play("pew");
 
     // Terminal
+    // get access to stdout
     let mut stdout = io::stdout();
+
+    // enable raw mode for get keyboard input as it occurs.
+    // `?` character meaning it will essentially crash if we have error
     terminal::enable_raw_mode()?;
+
+    // execute extension for intermediately execute something
     stdout.execute(EnterAlternateScreen)?;
-    stdout.execute(Hide);
+    stdout.execute(Hide)?;
 
     // Render loop in seperate thread
     let (render_tx, render_rx) = mpsc::channel();
+    
     let render_handle = thread::spawn(move || {
         let mut last_frame = frame::new_frame();
         let mut stdout = io::stdout();
@@ -46,14 +55,19 @@ fn main() -> Result <(), Box<dyn Error>> {
     });
 
     // Game loop
+    let mut player = Player::new();
     'gameloop: loop {
-        // Per frame init
-        let curr_frame = new_frame();
+        // Per frame init, khởi tạo một khung hình (frame) mới cho mỗi lần lặp của game loop.
+        let mut curr_frame = new_frame();
 
-        // Input
+        // Input handling, kiểm tra xem có sự kiện đầu vào nào từ người chơi không và trả về true nếu có. Nếu không có sự kiện nào, vòng lặp kết thúc
         while event::poll(Duration::default())? {
+            // : Kiểm tra sự kiện đầu vào có phải là một sự kiện phím không và gán nó vào biến key_event.
             if let Event::Key(key_event) = event::read()? {
+                // kiểm tra mã phím và xử lý các sự kiện cụ thể. 
                 match key_event.code {
+                    KeyCode::Left => player.move_left(),
+                    KeyCode::Right => player.move_right(),
                     KeyCode::Esc | KeyCode::Char('q') => {
                         audio.play("lose");
                         break 'gameloop;
@@ -64,7 +78,10 @@ fn main() -> Result <(), Box<dyn Error>> {
         }
 
         // Draw & render
+        player.draw(&mut curr_frame);
+        // Gửi khung hình curr_frame cho quá trình vẽ và hiển thị (rendering)
         let _ = render_tx.send(curr_frame);
+        // Tạm ngừng chương trình trong 1 mili giây để kiểm soát tốc độ lặp (thường được sử dụng để kiểm soát tốc độ khung hình).
         thread::sleep(Duration::from_millis(1));
     }
 
