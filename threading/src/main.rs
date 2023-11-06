@@ -105,15 +105,59 @@ use std::sync::mpsc;
 
 // V. How to pass channels to functions
 // accept an int32 value from a channel
-fn logger(a: mpsc::Sender<i32>) {
-    a.send(5).unwrap();
-}
+// fn logger(a: mpsc::Sender<i32>) {
+//     a.send(5).unwrap();
+// }
 
+// fn main() {
+//     let (tx, rx) = mpsc::channel();
+//     let handle = thread::spawn(move || {
+//         logger(tx);
+//     });
+
+//     handle.join().unwrap();
+//     let b = rx.recv().unwrap();
+//     println!("Value a from function in extra thread: {}",b)
+// }
+
+// VI. How to send multiple values
+// fn main() {
+//     // create send/receiver vars to move data through channel
+//     let (tx, rx) = mpsc::channel();
+//     let handle = thread:: spawn(move || {
+//         let num1 = 1;
+//         let num2 = 2;
+//         let num3 = 3;
+//         tx.send(num1).unwrap();
+//         tx.send(num2).unwrap();
+//         tx.send(num3).unwrap();
+
+//         // wait .5 before sending
+//         thread::sleep(Duration::from_millis(500));
+//     });
+
+//     handle.join().unwrap();
+//     for i in rx {
+//         println!("{}", i);
+//         thread::sleep(Duration::from_millis(500));
+//     }
+// }
+
+// VII. How to create multiple producers
 fn main() {
     let (tx, rx) = mpsc::channel();
-    let handle = thread::spawn(move || {
-
+    // clone the sender
+    let tx1 = mpsc::Sender::clone(&tx);
+    thread::spawn(move || {
+        tx.send("Hello").unwrap();
     });
 
-    handle.join().unwrap();
+    thread::spawn(move || {
+        tx1.send("there").unwrap();
+    });
+
+    let a = rx.recv().unwrap();
+    let b = rx.recv().unwrap();
+    println!("{} {}", a, b);
+
 }

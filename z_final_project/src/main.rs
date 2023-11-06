@@ -1,13 +1,13 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use std::error::Error;
 use std::thread;
-use rusty_audio::Audio;
+// use rusty_audio::Audio;
 use crossterm::{event, execute, terminal, ExecutableCommand};
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::cursor::{Hide, Show};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use z_final_project::player::Player;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::io;
 use std::sync::mpsc;
 use z_final_project::frame;
@@ -16,14 +16,14 @@ use z_final_project::frame::new_frame;
 use z_final_project::frame::Drawable;
 
 fn main() -> Result <(), Box<dyn Error>> {
-    let mut audio = Audio::new();
-    audio.add("explode", "explode.wav");
-    audio.add("lose", "lose.wav");
-    audio.add("move", "move.wav");
-    audio.add("pew", "pew.wav");
-    audio.add("startup", "startup.wav");
-    audio.add("win", "win.wav");
-    audio.play("pew");
+    // let mut audio = Audio::new();
+    // audio.add("explode", "explode.wav");
+    // audio.add("lose", "lose.wav");
+    // audio.add("move", "move.wav");
+    // audio.add("pew", "pew.wav");
+    // audio.add("startup", "startup.wav");
+    // audio.add("win", "win.wav");
+    // audio.play("pew");
 
     // Terminal
     // get access to stdout
@@ -56,7 +56,10 @@ fn main() -> Result <(), Box<dyn Error>> {
 
     // Game loop
     let mut player = Player::new();
+    let mut instant = Instant::now();
     'gameloop: loop {
+        let delta = instant.elapsed();
+        instant = Instant::now();
         // Per frame init, khởi tạo một khung hình (frame) mới cho mỗi lần lặp của game loop.
         let mut curr_frame = new_frame();
 
@@ -68,8 +71,13 @@ fn main() -> Result <(), Box<dyn Error>> {
                 match key_event.code {
                     KeyCode::Left => player.move_left(),
                     KeyCode::Right => player.move_right(),
+                    KeyCode::Char(' ') | KeyCode::Enter => {
+                        if player.shoot() {
+                            // audio.play("pew");
+                        }
+                    }
                     KeyCode::Esc | KeyCode::Char('q') => {
-                        audio.play("lose");
+                        // audio.play("lose");
                         break 'gameloop;
                     }
                     _ => {}
@@ -77,6 +85,8 @@ fn main() -> Result <(), Box<dyn Error>> {
             }
         }
 
+        // Updates
+        player.update(delta);
         // Draw & render
         player.draw(&mut curr_frame);
         // Gửi khung hình curr_frame cho quá trình vẽ và hiển thị (rendering)
@@ -88,7 +98,7 @@ fn main() -> Result <(), Box<dyn Error>> {
     // Cleanup
     drop(render_tx);
     render_handle.join().unwrap();
-    audio.wait();
+    // audio.wait();
     stdout.execute(Show)?;
     stdout.execute(LeaveAlternateScreen)?;
     terminal::disable_raw_mode()?;
